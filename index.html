@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سكّني</title>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      direction: rtl;
+      background: #e9f5e5;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    header {
+      background-color: #4caf50;
+      color: #fff;
+      text-align: center;
+      padding: 3rem 0;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      font-size: 1.5rem;
+      font-weight: 300;
+    }
+
+    .container {
+      padding: 3rem;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .property {
+      background: #fff;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+
+    .property img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+
+    .info {
+      margin-top: 1rem;
+    }
+
+    h2, p {
+      margin: 0.5rem 0;
+    }
+
+    form {
+      background: #fff;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      margin: 1rem 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #f1c40f;
+      color: #fff;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .delete-btn, .edit-btn {
+      margin-top: 1rem;
+      background-color: #e74c3c;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      margin-left: 10px;
+    }
+
+    .edit-btn {
+      background-color: #3498db;
+    }
+
+    #map {
+      width: 100%;
+      height: 300px;
+      border-radius: 12px;
+      margin-top: 2rem;
+    }
+
+    .availability-label {
+      font-weight: bold;
+      color: #4caf50;
+    }
+
+    .filter-select {
+      margin: 1rem 0;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      width: 100%;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>سكّني</h1>
+    <p>لجامعتي المنيا الأهلية ودرّاية</p>
+  </header>
+
+  <div class="container">
+    <input type="text" id="search" placeholder="ابحث عن الشقق..." oninput="searchProperties()">
+
+    <select class="filter-select" id="availabilityFilter" onchange="filterByAvailability()">
+      <option value="all">عرض الكل</option>
+      <option value="available">المتاحة فقط</option>
+      <option value="unavailable">غير المتاحة فقط</option>
+    </select>
+
+    <form id="propertyForm">
+      <h2>أضف شقة جديدة</h2>
+      <input type="text" id="location" placeholder="الموقع" required>
+      <input type="text" id="type" placeholder="نوع السكن" required>
+      
+      <label for="price">السعر</label>
+      <select id="priceSelect">
+        <option value="">-- اختر سعرًا --</option>
+        <option value="3000">3000 جنيه شهريًا</option>
+        <option value="3500">3500 جنيه شهريًا</option>
+        <option value="4000">4000 جنيه شهريًا</option>
+        <option value="4500">4500 جنيه شهريًا</option>
+        <option value="5000">5000 جنيه شهريًا</option>
+      </select>
+      <input type="number" id="priceInput" placeholder="أو اكتب سعرًا يدويًا" min="0">
+
+      <input type="text" id="distance" placeholder="المسافة من الجامعة" required>
+      <input type="text" id="phone" placeholder="رقم التواصل" required>
+      <input type="file" id="image" accept="image/*">
+      <button type="submit">إضافة</button>
+    </form>
+
+    <div id="properties"></div>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let properties = JSON.parse(localStorage.getItem('properties')) || [];
+
+    function renderProperties() {
+      const propertiesDiv = document.getElementById('properties');
+      propertiesDiv.innerHTML = '';
+      properties.forEach((property, index) => {
+        const propertyHTML = `
+          <div class="property" data-index="${index}" data-available="${property.available}">
+            <img src="${property.image}" alt="صورة الشقة">
+            <div class="info">
+              <h2>${property.location}</h2>
+              <p>${property.type}</p>
+              <p class="price">السعر: ${property.price} جنيه شهريًا</p>
+              <p>المسافة من الجامعة: ${property.distance}</p>
+              <p>رقم التواصل: ${property.phone}</p>
+              <label class="switch">
+                <input type="checkbox" ${property.available ? 'checked' : ''} onchange="toggleAvailability(this)">
+                <span class="slider"></span>
+              </label>
+              <span class="availability-label">${property.available ? 'متاحة' : 'غير متاحة'}</span>
+              <br>
+              <button class="delete-btn" onclick="deleteProperty(${index})">حذف</button>
+              <button class="edit-btn" onclick="editProperty(${index})">تعديل</button>
+            </div>
+          </div>
+        `;
+        propertiesDiv.insertAdjacentHTML('beforeend', propertyHTML);
+      });
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('properties', JSON.stringify(properties));
+    }
+
+    function deleteProperty(index) {
+      if (confirm("هل أنت متأكد من حذف هذه الشقة؟")) {
+        properties.splice(index, 1);
+        saveToLocalStorage();
+        renderProperties();
+      }
+    }
+
+    function editProperty(index) {
+      const prop = properties[index];
+      document.getElementById('location').value = prop.location;
+      document.getElementById('type').value = prop.type;
+      document.getElementById('priceSelect').value = '';
+      document.getElementById('priceInput').value = prop.price;
+      document.getElementById('distance').value = prop.distance;
+      document.getElementById('phone').value = prop.phone;
+      properties.splice(index, 1);
+      saveToLocalStorage();
+      renderProperties();
+    }
+
+    function toggleAvailability(checkbox) {
+      const property = checkbox.closest('.property');
+      const label = checkbox.parentElement.nextElementSibling;
+      const index = property.getAttribute('data-index');
+      const available = checkbox.checked;
+      properties[index].available = available;
+      label.textContent = available ? 'متاحة' : 'غير متاحة';
+      label.style.color = available ? '#4caf50' : '#e74c3c';
+      saveToLocalStorage();
+      filterByAvailability();
+    }
+
+    function filterByAvailability() {
+      const filterValue = document.getElementById('availabilityFilter').value;
+      const allProperties = document.querySelectorAll('.property');
+      allProperties.forEach(prop => {
+        const available = prop.getAttribute('data-available') === 'true';
+        if (
+          filterValue === 'all' ||
+          (filterValue === 'available' && available) ||
+          (filterValue === 'unavailable' && !available)
+        ) {
+          prop.style.display = 'block';
+        } else {
+          prop.style.display = 'none';
+        }
+      });
+    }
+
+    function searchProperties() {
+      const query = document.getElementById('search').value.toLowerCase();
+      const props = document.querySelectorAll('.property');
+      props.forEach(p => {
+        const text = p.textContent.toLowerCase();
+        p.style.display = text.includes(query) ? 'block' : 'none';
+      });
+    }
+
+    const form = document.getElementById('propertyForm');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const location = document.getElementById('location').value;
+      const type = document.getElementById('type').value;
+      const priceSelect = document.getElementById('priceSelect').value;
+      const priceInput = document.getElementById('priceInput').value;
+      const price = priceInput !== "" ? priceInput : priceSelect;
+      const distance = document.getElementById('distance').value;
+      const phone = document.getElementById('phone').value;
+      const image = document.getElementById('image').files[0] ? URL.createObjectURL(document.getElementById('image').files[0]) : 'https://via.placeholder.com/600x300';
+
+      const newProperty = {
+        location, type, price, distance, phone, image, available: true
+      };
+
+      properties.unshift(newProperty);
+      saveToLocalStorage();
+      renderProperties();
+      form.reset();
+    });
+
+    // تحميل الشقق عند الدخول
+    renderProperties();
+  </script>
+</body>
+</html>
